@@ -1,5 +1,5 @@
 # Portfolio
-My Data Science/ Analyst Portfolio 
+My Data Science Portfolio 
 
 
 Click on View Code (Above this) to view my projects 
