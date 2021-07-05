@@ -1,0 +1,108 @@
+SQL Queries 
+
+This was a part of my assignment at NYU MSBA. Had to answer the following questions.
+
+The questions are from easy to hard 
+
+==========================================
+Questions: (the queries are pasted below)
+==========================================
+
+1. In the IMDb database, find how many actors are stored in the actors’ table. 
+
+2.	In the IMDb database, find all information for the actor with id 376249.
+
+3.	In the IMDb database, find all the actors that played in the movie Ocean's Twelve.
+
+4.	In the IMDb database, find all the movies that have the word "Vietnam" in their title.
+
+5.	In the IMDb database, find the number of movies that each actor has played. Show just the actor id and the number of movies.
+
+6.	In the Facebook database, find the Male students, who are "InterestedIn" Women, and are "LookingFor" "Whatever I can get".
+
+7.	In the Facebook database, for each book, list the number of women that like the book. Limit the list to books that have at least 100 likes from women.
+
+8.	In the Facebook database, find the most commonly declared double majors/concentrations, and rank them in descending order, based on the number of students. Keep only double majors that have at least 50 students. (Hint: You will need to use the table "Concentration" twice while constructing the query; you also need to ensure that the two concentrations are different, i.e., no "Finance-Finance")
+
+9.	You will need to use subqueries this this query
+In the IMDb database, you are asked to analyze the first names of the actors and how they correlate to gender. Limit your analysis only to first names that do not include a dot "." or parentheses (i.e, ignore "A.", "J.B.", "Alfred (I)" etc), and only consider first names that appear at least 50 times in the actors table. Find the names that appear only for male actors but for no female actresses, and report the corresponding frequencies (Hint: the results start with "Richard, 2403", "Mark, 2086", etc). 
+
+10.	You will need to use subqueries this this query
+For names that appear for both males and females, report the names and the frequencies for males and females. Rank on top the most ambiguous names, as measured by the ratio of the frequencies. We will consider as the most ambiguous names are the ones with the absolute values of their frequency ratio is 1:1 across males:females, and therefore the log-odds of that ratio for the ambiguous names will be close to 0.
+1.	Hint: Mika, Dany, Devon, Toni are the most ambiguous.) 
+2.	Hint: Remember that the log can be both positive and negative
+
+========================================
+Answers
+========================================
+
+1.	select count(*) from imdb.actors; 
+
+2.	select * from imdb.actors 
+join imdb.roles on imdb.actors.id = imdb.roles.actor_id
+where actor_id = '376249';
+or 
+
+Select * from imdb.actors 
+where id ='376249';
+
+3.	select * from imdb.movies
+join imdb.roles on imdb.movies.id = imdb.roles.movie_id
+join imdb.actors on imdb.roles.actor_id = imdb.actors.id
+where name = "Ocean's Twelve";
+
+4.	select name from imdb.movies
+where name like '%vietnam%';
+
+5.	select actor_id, count(movie_id) as total_movies 
+from imdb.roles
+group by actor_id;
+
+6.	select Name, Sex, LookingFor, InterestedIn from facebook.Profiles
+join facebook.LookingFor on facebook.Profiles.ProfileID = facebook.LookingFor.ProfileID
+join facebook.Orientation on facebook.Profiles.ProfileID = facebook.Orientation.ProfileID
+where sex = 'Male' and LookingFor = 'Whatever I can get' and InterestedIn = 'Women';
+
+7.	select Book, count(Book) as likes from facebook.FavoriteBooks
+join facebook.Profiles on facebook.FavoriteBooks.ProfileID = facebook.Profiles.ProfileID
+where sex = 'Female'
+group by Book
+having likes >= 100
+order by 2 desc;
+
+8.	use facebook;
+with d as (
+select c1.Concentration AS c1, c2.Concentration AS c2, count(distinct c1.ProfileID) as num_students
+from `Concentration` c1
+join `Concentration` c2
+on c1.ProfileID = c2.ProfileID AND c1.Concentration <> c2.Concentration
+group by  1,2
+having num_students >= 50
+order by 3 desc)
+select distinct case when c1 < c2 THEN c1 ELSE c2 end as Concentration1, case when c1 < c2 then c2 else c1 end as Concentration2, num_students
+from d
+order by 3 desc ;
+
+9.	select first_name, count(*) from imdb.actors 
+where first_name not like '%.%' and first_name not like '%(%' and first_name not like '%)%'
+and first_name not in (select first_name from imdb.actors where gender = 'f')
+group by first_name
+having count(*)>50 
+order by count(*) Desc;
+
+10.	Select A.*,
+Round((A.Male_count/A.Total),1) as Male_Freq,
+Round((A.Female_count/A.Total),1) as Female_Freq,
+Male_count/Female_count as M2F_Ratio,
+abs(log(Male_count/Female_count )) as Abs_Log
+from
+(Select a.first_name,
+sum(Case when a.gender='M' Then 1 Else 0 End) as Male_count,
+sum(Case when a.gender='F' Then 1 Else 0 End) as Female_count,
+Count(*) as Total
+from imdb.actors as a where
+first_name not like '%.%' and first_name not like '%(%' and first_name not like '%)%'
+group by a.first_name) as A
+where A.Male_count>0 and A.Female_count>0 and Total>30
+order by Abs_Log asc;
+
